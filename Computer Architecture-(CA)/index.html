@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive Cache Memory Simulator — ELE336 Computer Architecture. Visualize Direct-Mapped, Fully Associative, and Set-Associative caches with LRU/FIFO replacement policies.">
+    <title>Cache Memory Simulator | ELE336 Computer Architecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header id="app-header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect x="2" y="2" width="12" height="12" rx="2" fill="#6C63FF" opacity="0.9"/>
+                        <rect x="18" y="2" width="12" height="12" rx="2" fill="#00D4AA" opacity="0.9"/>
+                        <rect x="2" y="18" width="12" height="12" rx="2" fill="#FF6B9D" opacity="0.9"/>
+                        <rect x="18" y="18" width="12" height="12" rx="2" fill="#FFB84D" opacity="0.9"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Cache Memory Simulator</h1>
+                    <span class="subtitle">ELE336 — Computer Architecture</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btn-export" class="btn btn-ghost" onclick="exportResults()" style="display:none" title="Export simulation results as CSV">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export
+                </button>
+                <button id="btn-reset" class="btn btn-ghost" onclick="resetSimulator()" title="Reset the simulator">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-main">
+        <!-- Configuration Panel -->
+        <section id="config-panel" class="glass-card">
+            <div class="section-header">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Configuration
+                </h2>
+                <div class="config-presets">
+                    <span class="preset-label">Presets:</span>
+                    <button class="btn btn-chip" onclick="applyPreset('small')">Small (64B)</button>
+                    <button class="btn btn-chip" onclick="applyPreset('medium')">Medium (256B)</button>
+                    <button class="btn btn-chip" onclick="applyPreset('large')">Large (1KB)</button>
+                </div>
+            </div>
+
+            <div class="config-grid">
+                <div class="config-group">
+                    <label for="cache-type">Cache Type
+                        <span class="tooltip-icon" data-tooltip="Direct-Mapped: Each memory block maps to exactly one cache line. Fully Associative: A block can go in any cache line. Set-Associative: A block maps to a specific set, then any way within that set.">?</span>
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="cache-type" onchange="onCacheTypeChange()">
+                            <option value="direct">Direct-Mapped</option>
+                            <option value="fully">Fully Associative</option>
+                            <option value="set" selected>Set-Associative</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="config-group">
+                    <label for="cache-size">Cache Size (bytes)
+                        <span class="tooltip-icon" data-tooltip="Total size of the cache memory in bytes. Must be a power of 2.">?</span>
+                    </label>
+                    <input type="number" id="cache-size" value="256" min="4" step="1">
+                </div>
+                <div class="config-group">
+                    <label for="block-size">Block Size (bytes)
+                        <span class="tooltip-icon" data-tooltip="Size of each cache block/line in bytes. Determines the offset bits. Must be a power of 2.">?</span>
+                    </label>
+                    <input type="number" id="block-size" value="16" min="1" step="1">
+                </div>
+                <div class="config-group" id="ways-group">
+                    <label for="num-ways">Associativity (Ways)
+                        <span class="tooltip-icon" data-tooltip="Number of ways per set. 2-way means each set has 2 cache lines. More ways = more flexibility but slower lookup.">?</span>
+                    </label>
+                    <input type="number" id="num-ways" value="2" min="1" step="1">
+                </div>
+                <div class="config-group" id="policy-group">
+                    <label for="replacement-policy">Replacement Policy
+                        <span class="tooltip-icon" data-tooltip="LRU: Replaces the line that hasn't been accessed for the longest time. FIFO: Replaces the line that was loaded first, regardless of recent use.">?</span>
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="replacement-policy">
+                            <option value="lru">LRU (Least Recently Used)</option>
+                            <option value="fifo">FIFO (First-In First-Out)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="config-group">
+                    <label for="hit-time">Hit Time (cycles)
+                        <span class="tooltip-icon" data-tooltip="Number of clock cycles required to access data on a cache hit. Typically 1-4 cycles for L1 cache.">?</span>
+                    </label>
+                    <input type="number" id="hit-time" value="1" min="0" step="0.1">
+                </div>
+                <div class="config-group">
+                    <label for="miss-penalty">Miss Penalty (cycles)
+                        <span class="tooltip-icon" data-tooltip="Additional cycles needed to fetch data from main memory on a cache miss. AMAT = Hit Time + Miss Rate × Miss Penalty.">?</span>
+                    </label>
+                    <input type="number" id="miss-penalty" value="100" min="1" step="1">
+                </div>
+            </div>
+
+            <!-- Cache Info Display -->
+            <div id="cache-info" class="cache-info">
+                <div class="info-chip"><span class="info-label">Lines:</span> <span id="info-lines">16</span></div>
+                <div class="info-chip"><span class="info-label">Sets:</span> <span id="info-sets">8</span></div>
+                <div class="info-chip"><span class="info-label">Offset Bits:</span> <span id="info-offset">4</span></div>
+                <div class="info-chip"><span class="info-label">Index Bits:</span> <span id="info-index">3</span></div>
+                <div class="info-chip"><span class="info-label">Tag Bits:</span> <span id="info-tag">25</span></div>
+            </div>
+
+            <!-- Address Input -->
+            <div class="address-input-section">
+                <label for="address-input">Memory Addresses</label>
+                <p class="input-hint">Enter addresses separated by commas, spaces, or newlines. Supports decimal, hex (0x prefix), or binary (0b prefix).</p>
+                <textarea id="address-input" rows="3" placeholder="e.g. 0, 4, 8, 16, 0, 4, 32, 0, 4&#10;or: 0x00, 0x04, 0x08, 0x10"></textarea>
+                <div class="input-actions">
+                    <button id="btn-load-sample" class="btn btn-secondary" onclick="loadSampleAddresses()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Sample
+                    </button>
+                    <button id="btn-random" class="btn btn-secondary" onclick="generateRandomAddresses()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2"/></svg>
+                        Random
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadScenario('temporal')">Temporal</button>
+                    <button class="btn btn-secondary" onclick="loadScenario('spatial')">Spatial</button>
+                    <button class="btn btn-secondary" onclick="loadScenario('thrashing')">Thrashing</button>
+                    <input type="file" id="file-input" accept=".txt,.csv" style="display:none" onchange="loadFromFile(event)">
+                    <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        File
+                    </button>
+                    <button id="btn-simulate" class="btn btn-primary" onclick="runSimulation()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Run Simulation
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="hidden">
+            <!-- Performance Metrics -->
+            <div id="metrics-panel" class="glass-card">
+                <div class="section-header">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        Performance Metrics
+                    </h2>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card metric-hits">
+                        <div class="metric-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                        <div class="metric-value" id="metric-hits">0</div>
+                        <div class="metric-label">Cache Hits</div>
+                    </div>
+                    <div class="metric-card metric-misses">
+                        <div class="metric-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+                        <div class="metric-value" id="metric-misses">0</div>
+                        <div class="metric-label">Cache Misses</div>
+                    </div>
+                    <div class="metric-card metric-hit-ratio">
+                        <div class="metric-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+                        <div class="metric-value" id="metric-hit-ratio">0%</div>
+                        <div class="metric-label">Hit Ratio</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="hit-ratio-bar"></div></div>
+                    </div>
+                    <div class="metric-card metric-miss-ratio">
+                        <div class="metric-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></div>
+                        <div class="metric-value" id="metric-miss-ratio">0%</div>
+                        <div class="metric-label">Miss Ratio</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="miss-ratio-bar"></div></div>
+                    </div>
+                    <div class="metric-card metric-amat">
+                        <div class="metric-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                        <div class="metric-value" id="metric-amat">0</div>
+                        <div class="metric-label">AMAT (cycles)</div>
+                    </div>
+                    <div class="metric-card metric-total">
+                        <div class="metric-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                        <div class="metric-value" id="metric-total">0</div>
+                        <div class="metric-label">Total Accesses</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hit/Miss Timeline Chart -->
+            <div id="chart-panel" class="glass-card">
+                <div class="section-header">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        Access Timeline
+                    </h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="timeline-chart" height="120"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <span class="legend-item legend-hit"><span class="legend-dot"></span> Hit</span>
+                    <span class="legend-item legend-miss"><span class="legend-dot"></span> Miss</span>
+                </div>
+            </div>
+
+            <!-- Data Flow Visualization -->
+            <div id="cache-viz-panel" class="glass-card">
+                <div class="section-header">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        Data Flow Visualization
+                    </h2>
+                    <div class="viz-controls">
+                        <button id="btn-step-back" class="btn btn-icon" onclick="stepBack()" disabled title="Previous step (← or H)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <span id="step-indicator" class="step-indicator">Step 0 / 0</span>
+                        <button id="btn-step-forward" class="btn btn-icon" onclick="stepForward()" disabled title="Next step (→ or L)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        <button id="btn-play" class="btn btn-icon" onclick="toggleAutoPlay()" disabled title="Auto-play (Space)">
+                            <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </button>
+                        <div class="speed-control">
+                            <label for="speed-slider" class="speed-label">Speed:</label>
+                            <input type="range" id="speed-slider" min="200" max="2000" value="800" step="100" oninput="updateSpeed(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Architecture Diagram -->
+                <div id="viz-diagram" class="viz-diagram">
+                    <!-- CPU Node -->
+                    <div class="viz-node viz-cpu" id="viz-cpu">
+                        <div class="viz-node-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                        </div>
+                        <div class="viz-node-text"><div class="viz-node-label">CPU</div><div class="viz-node-detail" id="cpu-request">Waiting...</div></div>
+                    </div>
+
+                    <!-- Arrow: CPU → Address Decomp -->
+                    <div class="viz-arrow" id="arrow-cpu-cache">
+                        <div class="viz-arrow-line"><div class="viz-arrow-particle" id="particle-cpu-cache"></div></div>
+                        <div class="viz-arrow-label" id="arrow-cpu-label">Address</div>
+                    </div>
+
+                    <!-- Address Decomposition -->
+                    <div class="viz-addr-decomp" id="viz-addr-decomp">
+                        <div class="addr-field addr-tag"><span class="addr-field-label">TAG</span><span class="addr-field-value" id="viz-tag-val">—</span></div>
+                        <div class="addr-field addr-index"><span class="addr-field-label">INDEX</span><span class="addr-field-value" id="viz-index-val">—</span></div>
+                        <div class="addr-field addr-offset"><span class="addr-field-label">OFFSET</span><span class="addr-field-value" id="viz-offset-val">—</span></div>
+                    </div>
+
+                    <!-- Arrow: Decomp → Cache -->
+                    <div class="viz-arrow" id="arrow-decomp-cache">
+                        <div class="viz-arrow-line"><div class="viz-arrow-particle" id="particle-decomp-cache"></div></div>
+                        <div class="viz-arrow-label" id="arrow-decomp-label">Look up</div>
+                    </div>
+
+                    <!-- Cache Block Grid -->
+                    <div class="viz-cache-wrapper">
+                        <div class="viz-cache-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            Cache Memory
+                            <span class="viz-result-badge" id="viz-result-badge"></span>
+                        </div>
+                        <div class="viz-cache-grid" id="viz-cache-grid">
+                            <p class="empty-state">Run a simulation to see the visualization.</p>
+                        </div>
+                    </div>
+
+                    <!-- Arrow: Cache ↔ Memory -->
+                    <div class="viz-arrow" id="arrow-cache-mem">
+                        <div class="viz-arrow-line"><div class="viz-arrow-particle" id="particle-cache-mem"></div></div>
+                        <div class="viz-arrow-label" id="arrow-mem-label">—</div>
+                    </div>
+
+                    <!-- Memory Node -->
+                    <div class="viz-node viz-memory" id="viz-memory">
+                        <div class="viz-node-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="2" y1="7" x2="22" y2="7"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="17" x2="22" y2="17"/><line x1="7" y1="2" x2="7" y2="22"/></svg>
+                        </div>
+                        <div class="viz-node-text"><div class="viz-node-label">Main Memory</div><div class="viz-node-detail" id="mem-detail">RAM</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Explanation Panel -->
+            <div id="explanation-panel" class="glass-card">
+                <div class="section-header">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Step-by-Step Explanation
+                    </h2>
+                </div>
+                <div id="explanation-content" class="explanation-content">
+                    <p class="empty-state">Run a simulation to see explanations for each memory access.</p>
+                </div>
+            </div>
+
+            <!-- Simulation Log Table -->
+            <div id="log-panel" class="glass-card">
+                <div class="section-header">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Simulation Log
+                    </h2>
+                </div>
+                <div id="log-table-container" class="log-table-container">
+                    <table id="log-table">
+                        <thead><tr>
+                            <th>#</th><th>Address</th><th>Binary</th><th>Tag</th><th>Index/Set</th><th>Offset</th><th>Result</th><th>Details</th>
+                        </tr></thead>
+                        <tbody id="log-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer id="app-footer">
+        <p>Cache Memory Simulator — ELE336 Computer Architecture Semester Project &copy; 2026</p>
+    </footer>
+
+    <script src="simulator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
